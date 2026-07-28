@@ -2,16 +2,19 @@ import csv
 import os
 import re
 
+# Global collections to hold application data in memory
 transactions = []
 category_budgets = {}
 
 
 def load_data():
+    """Reads saved transaction records and budget limits from CSV files into memory."""
+    # Check if transaction file exists before attempting to read
     if os.path.exists("budget_data.csv"):
         try:
             with open("budget_data.csv", "r") as file:
                 reader = csv.reader(file)
-                next(reader, None)
+                next(reader, None)  # Skip CSV header row
                 for row in reader:
                     if len(row) == 5:
                         t = {
@@ -25,11 +28,12 @@ def load_data():
         except Exception:
             print("Error reading saved transactions.")
 
+    # Check if budget limits file exists before reading
     if os.path.exists("budget_limits.csv"):
         try:
             with open("budget_limits.csv", "r") as file:
                 reader = csv.reader(file)
-                next(reader, None)
+                next(reader, None)  # Skip CSV header row
                 for row in reader:
                     if len(row) == 2:
                         category_budgets[row[0]] = float(row[1])
@@ -38,13 +42,16 @@ def load_data():
 
 
 def save_data():
+    """Writes all current transactions and budget limits back to CSV files for persistence."""
     try:
+        # Write transactions list to CSV file
         with open("budget_data.csv", "w", newline="") as file:
             writer = csv.writer(file)
             writer.writerow(["Date", "Type", "Category", "Description", "Amount"])
             for t in transactions:
                 writer.writerow([t["date"], t["type"], t["category"], t["description"], t["amount"]])
 
+        # Write category spending limits to CSV file
         with open("budget_limits.csv", "w", newline="") as file:
             writer = csv.writer(file)
             writer.writerow(["Category", "Limit"])
@@ -57,7 +64,8 @@ def save_data():
 
 
 def get_valid_date(prompt):
-    pattern = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+    """Prompts the user for a date string and validates format using regular expressions."""
+    pattern = re.compile(r"^\d{4}-\d{2}-\d{2}$")  # Matches YYYY-MM-DD pattern
     while True:
         val = input(prompt).strip()
         if pattern.match(val):
@@ -66,9 +74,11 @@ def get_valid_date(prompt):
 
 
 def add_transaction():
+    """Prompts user for new transaction details and appends it to the transaction list."""
     print("\n--- Add Transaction ---")
     date = get_valid_date("Enter date (YYYY-MM-DD): ")
 
+    # Input loop to ensure type is strictly Income or Expense
     t_type = input("Enter type (Income or Expense): ").strip().capitalize()
     while t_type != "Income" and t_type != "Expense":
         print("Invalid choice.")
@@ -77,6 +87,7 @@ def add_transaction():
     category = input("Enter category: ")
     description = input("Enter description: ")
 
+    # Validation loop for numerical entry
     valid_amount = False
     amount = 0.0
     while not valid_amount:
@@ -99,6 +110,7 @@ def add_transaction():
     transactions.append(t)
     print("Transaction added!")
 
+    # Check if this new expense causes the category to exceed its spending limit
     if t_type == "Expense" and category in category_budgets:
         total = 0.0
         for item in transactions:
@@ -109,12 +121,14 @@ def add_transaction():
 
 
 def view_transactions_table():
+    """Displays all current transactions in a formatted, aligned table view."""
     print("\n" + "=" * 70)
     print(f"{'ID':<4} | {'Date':<10} | {'Type':<8} | {'Category':<12} | {'Amount':<9} | {'Description'}")
     print("=" * 70)
     if not transactions:
         print("No transactions to display.")
         return
+    # Enumerate provides both index number and transaction item
     for idx, t in enumerate(transactions):
         print(
             f"{idx:<4} | {t['date']:<10} | {t['type']:<8} | {t['category']:<12} | ${t['amount']:<8.2f} | {t['description']}")
@@ -122,6 +136,7 @@ def view_transactions_table():
 
 
 def update_transaction():
+    """Allows the user to select an existing transaction by index and modify specific fields."""
     view_transactions_table()
     if len(transactions) == 0:
         return
@@ -131,6 +146,7 @@ def update_transaction():
         if 0 <= choice < len(transactions):
             t = transactions[choice]
 
+            # Pressing Enter leaves field unchanged
             new_date = input(f"New Date ({t['date']}): ")
             if new_date != "":
                 t["date"] = new_date
@@ -162,6 +178,7 @@ def update_transaction():
 
 
 def delete_transaction():
+    """Removes a selected transaction from the list based on its index position."""
     view_transactions_table()
     if len(transactions) == 0:
         return
@@ -169,7 +186,7 @@ def delete_transaction():
     try:
         choice = int(input("\nEnter index to delete: "))
         if 0 <= choice < len(transactions):
-            removed = transactions.pop(choice)
+            removed = transactions.pop(choice)  # Remove and return item at index
             print(f"Deleted: {removed['description']}")
         else:
             print("Invalid index.")
@@ -178,6 +195,7 @@ def delete_transaction():
 
 
 def calculate_balance():
+    """Calculates cumulative total income, total expenses, and current overall balance."""
     income = 0.0
     expense = 0.0
 
@@ -194,6 +212,7 @@ def calculate_balance():
 
 
 def category_summary():
+    """Groups expense transactions by category and calculates spending per category."""
     print("\n--- Category Spending ---")
     totals = {}
 
@@ -210,6 +229,7 @@ def category_summary():
 
 
 def set_budgets():
+    """Sets a maximum spending threshold for a category and displays spending status."""
     print("\n--- Set Budget Limit ---")
     cat = input("Enter expense category: ")
     try:
@@ -233,6 +253,7 @@ def set_budgets():
 
 
 def monthly_summary():
+    """Filters transactions by YYYY-MM prefix to display monthly income, expense, and net savings."""
     print("\n--- Monthly Summary ---")
     month_year = input("Enter Month and Year (YYYY-MM): ")
 
@@ -241,6 +262,7 @@ def monthly_summary():
     m_cats = {}
 
     for t in transactions:
+        # Check if transaction date string begins with entered YYYY-MM
         if t["date"].startswith(month_year):
             if t["type"] == "Income":
                 m_income = m_income + t["amount"]
@@ -261,6 +283,7 @@ def monthly_summary():
 
 
 def main():
+    """Runs the main interactive menu loop for the application."""
     load_data()
     running = True
 
