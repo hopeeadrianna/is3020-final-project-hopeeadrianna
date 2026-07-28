@@ -1,45 +1,73 @@
 import csv
+import os
+import re
 
 transactions = []
 category_budgets = {}
 
 
 def load_data():
-    try:
-        file = open("budget_data.csv", "r")
-        reader = csv.reader(file)
-        header = next(reader, None)
-        for row in reader:
-            if len(row) == 5:
-                t = {
-                    "date": row[0],
-                    "type": row[1],
-                    "category": row[2],
-                    "description": row[3],
-                    "amount": float(row[4])
-                }
-                transactions.append(t)
-        file.close()
-    except FileNotFoundError:
-        print("No saved data file found.")
+    if os.path.exists("budget_data.csv"):
+        try:
+            with open("budget_data.csv", "r") as file:
+                reader = csv.reader(file)
+                next(reader, None)
+                for row in reader:
+                    if len(row) == 5:
+                        t = {
+                            "date": row[0],
+                            "type": row[1],
+                            "category": row[2],
+                            "description": row[3],
+                            "amount": float(row[4])
+                        }
+                        transactions.append(t)
+        except Exception:
+            print("Error reading saved transactions.")
+
+    if os.path.exists("budget_limits.csv"):
+        try:
+            with open("budget_limits.csv", "r") as file:
+                reader = csv.reader(file)
+                next(reader, None)
+                for row in reader:
+                    if len(row) == 2:
+                        category_budgets[row[0]] = float(row[1])
+        except Exception:
+            print("Error reading saved budget limits.")
 
 
 def save_data():
     try:
-        file = open("budget_data.csv", "w", newline="")
-        writer = csv.writer(file)
-        writer.writerow(["Date", "Type", "Category", "Description", "Amount"])
-        for t in transactions:
-            writer.writerow([t["date"], t["type"], t["category"], t["description"], t["amount"]])
-        file.close()
-        print("Data saved successfully!")
+        with open("budget_data.csv", "w", newline="") as file:
+            writer = csv.writer(file)
+            writer.writerow(["Date", "Type", "Category", "Description", "Amount"])
+            for t in transactions:
+                writer.writerow([t["date"], t["type"], t["category"], t["description"], t["amount"]])
+
+        with open("budget_limits.csv", "w", newline="") as file:
+            writer = csv.writer(file)
+            writer.writerow(["Category", "Limit"])
+            for cat, limit in category_budgets.items():
+                writer.writerow([cat, limit])
+
+        print("All transactions and budget limits saved successfully!")
     except Exception:
         print("Error saving data.")
 
 
+def get_valid_date(prompt):
+    pattern = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+    while True:
+        val = input(prompt).strip()
+        if pattern.match(val):
+            return val
+        print("Invalid date format. Please use YYYY-MM-DD.")
+
+
 def add_transaction():
     print("\n--- Add Transaction ---")
-    date = input("Enter date (YYYY-MM-DD): ")
+    date = get_valid_date("Enter date (YYYY-MM-DD): ")
 
     t_type = input("Enter type (Income or Expense): ").strip().capitalize()
     while t_type != "Income" and t_type != "Expense":
@@ -80,21 +108,21 @@ def add_transaction():
             print(f"ALERT: You passed your budget limit for {category}!")
 
 
-def view_transactions():
-    print("\n--- All Transactions ---")
-    if len(transactions) == 0:
-        print("No transactions found.")
+def view_transactions_table():
+    print("\n" + "=" * 70)
+    print(f"{'ID':<4} | {'Date':<10} | {'Type':<8} | {'Category':<12} | {'Amount':<9} | {'Description'}")
+    print("=" * 70)
+    if not transactions:
+        print("No transactions to display.")
         return
-
-    i = 0
-    for t in transactions:
+    for idx, t in enumerate(transactions):
         print(
-            f"[{i}] Date: {t['date']} | Type: {t['type']} | Category: {t['category']} | Desc: {t['description']} | Amount: ${t['amount']:.2f}")
-        i = i + 1
+            f"{idx:<4} | {t['date']:<10} | {t['type']:<8} | {t['category']:<12} | ${t['amount']:<8.2f} | {t['description']}")
+    print("=" * 70)
 
 
 def update_transaction():
-    view_transactions()
+    view_transactions_table()
     if len(transactions) == 0:
         return
 
@@ -134,7 +162,7 @@ def update_transaction():
 
 
 def delete_transaction():
-    view_transactions()
+    view_transactions_table()
     if len(transactions) == 0:
         return
 
@@ -241,7 +269,7 @@ def main():
         print("1. Add Transaction")
         print("2. Update Transaction")
         print("3. Delete Transaction")
-        print("4. View All Transactions")
+        print("4. View All Transactions (Table)")
         print("5. Calculate Current Balance")
         print("6. Category Spending Summary")
         print("7. Set and Check Budget Limits")
@@ -257,7 +285,7 @@ def main():
         elif choice == "3":
             delete_transaction()
         elif choice == "4":
-            view_transactions()
+            view_transactions_table()
         elif choice == "5":
             calculate_balance()
         elif choice == "6":
