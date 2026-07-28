@@ -1,6 +1,4 @@
 import csv
-import os
-import re
 
 transactions = []
 category_budgets = {}
@@ -23,47 +21,30 @@ def load_data():
                 transactions.append(t)
         file.close()
     except FileNotFoundError:
-        pass
-
-    if os.path.exists("budget_limits.csv"):
-        try:
-            with open("budget_limits.csv", "r") as file:
-                reader = csv.reader(file)
-                next(reader, None)
-                for row in reader:
-                    if len(row) == 2:
-                        category_budgets[row[0]] = float(row[1])
-        except Exception:
-            pass
+        print("No saved data file found.")
 
 
 def save_data():
-    file = open("budget_data.csv", "w", newline="")
-    writer = csv.writer(file)
-    writer.writerow(["Date", "Type", "Category", "Description", "Amount"])
-    for t in transactions:
-        writer.writerow([t["date"], t["type"], t["category"], t["description"], t["amount"]])
-    file.close()
-
     try:
-        with open("budget_limits.csv", "w", newline="") as file:
-            writer = csv.writer(file)
-            writer.writerow(["Category", "Limit"])
-            for cat, limit in category_budgets.items():
-                writer.writerow([cat, limit])
-        print("Data saved successfully.")
+        file = open("budget_data.csv", "w", newline="")
+        writer = csv.writer(file)
+        writer.writerow(["Date", "Type", "Category", "Description", "Amount"])
+        for t in transactions:
+            writer.writerow([t["date"], t["type"], t["category"], t["description"], t["amount"]])
+        file.close()
+        print("Data saved successfully!")
     except Exception:
-        print("Error saving budget limits.")
+        print("Error saving data.")
 
 
 def add_transaction():
     print("\n--- Add Transaction ---")
     date = input("Enter date (YYYY-MM-DD): ")
 
-    t_type = input("Enter type (Income/Expense): ").strip().capitalize()
+    t_type = input("Enter type (Income or Expense): ").strip().capitalize()
     while t_type != "Income" and t_type != "Expense":
-        print("Invalid type.")
-        t_type = input("Enter type (Income/Expense): ").strip().capitalize()
+        print("Invalid choice.")
+        t_type = input("Enter type (Income or Expense): ").strip().capitalize()
 
     category = input("Enter category: ")
     description = input("Enter description: ")
@@ -76,19 +57,19 @@ def add_transaction():
             if amount > 0:
                 valid_amount = True
             else:
-                print("Amount must be greater than 0.")
+                print("Amount must be greater than zero.")
         except ValueError:
             print("Please enter a valid number.")
 
-    new_t = {
+    t = {
         "date": date,
         "type": t_type,
         "category": category,
         "description": description,
         "amount": amount
     }
-    transactions.append(new_t)
-    print("Transaction added.")
+    transactions.append(t)
+    print("Transaction added!")
 
     if t_type == "Expense" and category in category_budgets:
         total = 0.0
@@ -96,7 +77,7 @@ def add_transaction():
             if item["type"] == "Expense" and item["category"].lower() == category.lower():
                 total = total + item["amount"]
         if total > category_budgets[category]:
-            print(f"ALERT: You passed your budget for {category}! Spent: ${total:.2f}")
+            print(f"ALERT: You passed your budget limit for {category}!")
 
 
 def view_transactions():
@@ -119,7 +100,7 @@ def update_transaction():
 
     try:
         choice = int(input("\nEnter index to update: "))
-        if choice >= 0 and choice < len(transactions):
+        if 0 <= choice < len(transactions):
             t = transactions[choice]
 
             new_date = input(f"New Date ({t['date']}): ")
@@ -149,7 +130,8 @@ def update_transaction():
         else:
             print("Invalid index.")
     except ValueError:
-        print("Enter a valid integer index.")
+        print("Please enter a valid index number.")
+
 
 def delete_transaction():
     view_transactions()
@@ -164,7 +146,7 @@ def delete_transaction():
         else:
             print("Invalid index.")
     except ValueError:
-        print("Enter a valid index.")
+        print("Please enter a valid index number.")
 
 
 def calculate_balance():
@@ -203,11 +185,11 @@ def set_budgets():
     print("\n--- Set Budget Limit ---")
     cat = input("Enter expense category: ")
     try:
-        limit = float(input(f"Enter limit for {cat}: $"))
+        limit = float(input(f"Enter spending limit for {cat}: $"))
         category_budgets[cat] = limit
         print("Budget set.")
     except ValueError:
-        print("Invalid number.")
+        print("Invalid amount.")
 
     print("\nBudget Status:")
     for b_cat, b_limit in category_budgets.items():
@@ -250,28 +232,6 @@ def monthly_summary():
         print(f"  {c}: ${amnt:.2f}")
 
 
-def ai_validated_date_input(prompt):
-    pattern = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-    while True:
-        val = input(prompt).strip()
-        if pattern.match(val):
-            return val
-        print("[AI Improved Check] Invalid date format. Please use YYYY-MM-DD.")
-
-
-def ai_view_transactions_formatted():
-    print("\n" + "=" * 70)
-    print(f"{'ID':<4} | {'Date':<10} | {'Type':<8} | {'Category':<12} | {'Amount':<9} | {'Description'}")
-    print("=" * 70)
-    if not transactions:
-        print("No transactions to display.")
-        return
-    for idx, t in enumerate(transactions):
-        print(
-            f"{idx:<4} | {t['date']:<10} | {t['type']:<8} | {t['category']:<12} | ${t['amount']:<8.2f} | {t['description']}")
-    print("=" * 70)
-
-
 def main():
     load_data()
     running = True
@@ -281,15 +241,14 @@ def main():
         print("1. Add Transaction")
         print("2. Update Transaction")
         print("3. Delete Transaction")
-        print("4. View All Transactions (Basic)")
-        print("5. View All Transactions (AI Formatted Table)")
-        print("6. Calculate Current Balance")
-        print("7. Category Spending Summary")
-        print("8. Set and Check Budget Limits")
-        print("9. Monthly Summary Report")
-        print("10. Save and Exit")
+        print("4. View All Transactions")
+        print("5. Calculate Current Balance")
+        print("6. Category Spending Summary")
+        print("7. Set and Check Budget Limits")
+        print("8. Monthly Summary Report")
+        print("9. Save and Exit")
 
-        choice = input("Select an option (1-10): ").strip()
+        choice = input("Select an option (1-9): ").strip()
 
         if choice == "1":
             add_transaction()
@@ -300,20 +259,18 @@ def main():
         elif choice == "4":
             view_transactions()
         elif choice == "5":
-            ai_view_transactions_formatted()
-        elif choice == "6":
             calculate_balance()
-        elif choice == "7":
+        elif choice == "6":
             category_summary()
-        elif choice == "8":
+        elif choice == "7":
             set_budgets()
-        elif choice == "9":
+        elif choice == "8":
             monthly_summary()
-        elif choice == "10":
+        elif choice == "9":
             save_data()
             running = False
         else:
-            print("Invalid menu option.")
+            print("Invalid menu choice.")
 
 
 if __name__ == "__main__":
